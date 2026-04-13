@@ -1,0 +1,645 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: FuelEU Maritime Compliance Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: routes
+    description: Route management
+  - name: compliance
+    description: Compliance balance calculations
+  - name: banking
+    description: Banking flexibility mechanism (Article 20)
+  - name: pooling
+    description: Pooling flexibility mechanism (Article 21)
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /routes:
+    get:
+      operationId: getRoutes
+      tags: [routes]
+      summary: List all routes
+      parameters:
+        - name: vesselType
+          in: query
+          schema:
+            type: string
+        - name: fuelType
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Route"
+
+  /routes/comparison:
+    get:
+      operationId: getRoutesComparison
+      tags: [routes]
+      summary: Compare routes against baseline
+      responses:
+        "200":
+          description: Comparison data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComparisonResult"
+
+  /routes/{routeId}/baseline:
+    post:
+      operationId: setBaseline
+      tags: [routes]
+      summary: Set a route as baseline
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Baseline set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Route"
+        "404":
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /compliance/cb:
+    get:
+      operationId: getComplianceBalance
+      tags: [compliance]
+      summary: Get compliance balance for a ship and year
+      parameters:
+        - name: shipId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Compliance balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceBalance"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /compliance/adjusted-cb:
+    get:
+      operationId: getAdjustedComplianceBalance
+      tags: [compliance]
+      summary: Get adjusted compliance balance after banking applications
+      parameters:
+        - name: shipId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Adjusted compliance balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdjustedComplianceBalance"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /banking/records:
+    get:
+      operationId: getBankingRecords
+      tags: [banking]
+      summary: Get banking records for a ship and year
+      parameters:
+        - name: shipId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Banking records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BankEntry"
+
+  /banking/bank:
+    post:
+      operationId: bankSurplus
+      tags: [banking]
+      summary: Bank a positive compliance balance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankRequest"
+      responses:
+        "200":
+          description: Banking result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankingActionResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /banking/apply:
+    post:
+      operationId: applyBanked
+      tags: [banking]
+      summary: Apply banked surplus to cover a deficit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyBankedRequest"
+      responses:
+        "200":
+          description: Apply result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankingActionResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pools:
+    post:
+      operationId: createPool
+      tags: [pooling]
+      summary: Create a compliance pool with multiple ships
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePoolRequest"
+      responses:
+        "200":
+          description: Pool created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoolResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    get:
+      operationId: getPools
+      tags: [pooling]
+      summary: Get all pools
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of pools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pool"
+
+  /compliance/summary:
+    get:
+      operationId: getComplianceSummary
+      tags: [compliance]
+      summary: Get overall compliance summary across all ships
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Compliance summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+        routeId:
+          type: string
+        vesselType:
+          type: string
+        fuelType:
+          type: string
+        year:
+          type: integer
+        ghgIntensity:
+          type: number
+        fuelConsumption:
+          type: number
+        distance:
+          type: number
+        totalEmissions:
+          type: number
+        isBaseline:
+          type: boolean
+        shipId:
+          type: string
+        energyInScope:
+          type: number
+        complianceBalance:
+          type: ["number", "null"]
+      required:
+        - id
+        - routeId
+        - vesselType
+        - fuelType
+        - year
+        - ghgIntensity
+        - fuelConsumption
+        - distance
+        - totalEmissions
+        - isBaseline
+        - shipId
+        - energyInScope
+
+    ComparisonItem:
+      type: object
+      properties:
+        routeId:
+          type: string
+        vesselType:
+          type: string
+        fuelType:
+          type: string
+        year:
+          type: integer
+        ghgIntensity:
+          type: number
+        isBaseline:
+          type: boolean
+        percentDiff:
+          type: ["number", "null"]
+        compliant:
+          type: boolean
+        targetIntensity:
+          type: number
+      required:
+        - routeId
+        - vesselType
+        - fuelType
+        - year
+        - ghgIntensity
+        - isBaseline
+        - compliant
+        - targetIntensity
+
+    ComparisonResult:
+      type: object
+      properties:
+        baseline:
+          $ref: "#/components/schemas/ComparisonItem"
+        comparisons:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComparisonItem"
+        targetIntensity:
+          type: number
+      required:
+        - comparisons
+        - targetIntensity
+
+    ComplianceBalance:
+      type: object
+      properties:
+        shipId:
+          type: string
+        year:
+          type: integer
+        cbGco2eq:
+          type: number
+        targetIntensity:
+          type: number
+        actualIntensity:
+          type: number
+        energyInScope:
+          type: number
+        status:
+          type: string
+          enum: [surplus, deficit, compliant]
+      required:
+        - shipId
+        - year
+        - cbGco2eq
+        - targetIntensity
+        - actualIntensity
+        - energyInScope
+        - status
+
+    AdjustedComplianceBalance:
+      type: object
+      properties:
+        shipId:
+          type: string
+        year:
+          type: integer
+        cbGco2eq:
+          type: number
+        bankedAmount:
+          type: number
+        appliedAmount:
+          type: number
+        adjustedCbGco2eq:
+          type: number
+        status:
+          type: string
+          enum: [surplus, deficit, compliant]
+      required:
+        - shipId
+        - year
+        - cbGco2eq
+        - bankedAmount
+        - appliedAmount
+        - adjustedCbGco2eq
+        - status
+
+    BankEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        shipId:
+          type: string
+        year:
+          type: integer
+        amountGco2eq:
+          type: number
+        entryType:
+          type: string
+          enum: [banked, applied]
+        createdAt:
+          type: string
+      required:
+        - id
+        - shipId
+        - year
+        - amountGco2eq
+        - entryType
+        - createdAt
+
+    BankRequest:
+      type: object
+      properties:
+        shipId:
+          type: string
+        year:
+          type: integer
+        amount:
+          type: number
+      required:
+        - shipId
+        - year
+        - amount
+
+    ApplyBankedRequest:
+      type: object
+      properties:
+        shipId:
+          type: string
+        year:
+          type: integer
+        amount:
+          type: number
+      required:
+        - shipId
+        - year
+        - amount
+
+    BankingActionResult:
+      type: object
+      properties:
+        shipId:
+          type: string
+        year:
+          type: integer
+        cbBefore:
+          type: number
+        applied:
+          type: number
+        cbAfter:
+          type: number
+        availableBanked:
+          type: number
+        action:
+          type: string
+          enum: [banked, applied]
+      required:
+        - shipId
+        - year
+        - cbBefore
+        - applied
+        - cbAfter
+        - availableBanked
+        - action
+
+    PoolMemberInput:
+      type: object
+      properties:
+        shipId:
+          type: string
+        adjustedCb:
+          type: number
+      required:
+        - shipId
+        - adjustedCb
+
+    CreatePoolRequest:
+      type: object
+      properties:
+        year:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoolMemberInput"
+      required:
+        - year
+        - members
+
+    PoolMember:
+      type: object
+      properties:
+        shipId:
+          type: string
+        cbBefore:
+          type: number
+        cbAfter:
+          type: number
+      required:
+        - shipId
+        - cbBefore
+        - cbAfter
+
+    PoolResult:
+      type: object
+      properties:
+        poolId:
+          type: integer
+        year:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoolMember"
+        poolSum:
+          type: number
+        valid:
+          type: boolean
+      required:
+        - poolId
+        - year
+        - members
+        - poolSum
+        - valid
+
+    Pool:
+      type: object
+      properties:
+        id:
+          type: integer
+        year:
+          type: integer
+        createdAt:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoolMember"
+      required:
+        - id
+        - year
+        - createdAt
+        - members
+
+    ComplianceSummary:
+      type: object
+      properties:
+        year:
+          type: integer
+        totalShips:
+          type: integer
+        surplusShips:
+          type: integer
+        deficitShips:
+          type: integer
+        totalBanked:
+          type: number
+        averageGhgIntensity:
+          type: number
+        targetIntensity:
+          type: number
+      required:
+        - year
+        - totalShips
+        - surplusShips
+        - deficitShips
+        - totalBanked
+        - averageGhgIntensity
+        - targetIntensity
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
