@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "FuelEU Maritime Dashboard"
+version = "1.0.0"
+id = "artifacts/fueleu-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21433
+
+[services.development]
+run = "pnpm --filter @workspace/fueleu-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/fueleu-dashboard", "run", "build" ]
+publicDir = "artifacts/fueleu-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21433"
+BASE_PATH = "/"
